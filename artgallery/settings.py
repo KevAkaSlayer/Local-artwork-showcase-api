@@ -31,6 +31,7 @@ SECRET_KEY = 'django-insecure-7$5ng43g&u0g-8=5!xa5=icjo#52r4llbem8zytxc!n*s2%&z%
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
+CSRF_TRUSTED_ORIGINS = ['https://local-artwork-showcase-api.onrender.com','https://*.127.0.0.1']
 
 AUTH_USER_MODEL = 'api.Artist'
 # Application definition
@@ -60,6 +61,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+CORS_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:5500",  # Allow requests from your development origin
+]
+
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
