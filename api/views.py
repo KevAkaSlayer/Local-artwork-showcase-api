@@ -4,34 +4,74 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Artist, Artwork
-from .serializers import MyTokenObtainPairSerializer, RegisterSerializer, ProfileSerializer, ArtworkSerializer
+from .serializers import MyTokenObtainPairSerializer, RegisterSerializer, ProfileSerializer, ArtworkSerializer, LoginSerializer, logoutSerializer
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
+from django.contrib.auth import authenticate, login, logout
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.authentication import SessionAuthentication
 
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
-class RegisterView(generics.CreateAPIView):
-    queryset = Artist.objects.all()
-    permission_classes = [AllowAny]
-    serializer_class = RegisterSerializer
+# class RegisterView(generics.CreateAPIView):
+#     queryset = Artist.objects.all()
+#     permission_classes = [AllowAny]
+#     serializer_class = RegisterSerializer
 
+class RegisterView(APIView):
+    serializer_class = RegisterSerializer
+    
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            try:
+                 email = serializer.validated_data['email']
+                 user = Artist.objects.filter( email= email).exists()
+                 if user :return Response("User with this email already exist",status=status.HTTP_406_NOT_ACCEPTABLE)
+                 user = serializer.save()
+                 user.save()
+                 return Response({"status":1})
+            except Exception as e:
+                return Response("User with this email already exist",status=status.HTTP_406_NOT_ACCEPTABLE)
+                 
+        return Response(serializer.errors)
+
+
+
+
+class loginView(APIView):
+    serializer_class = LoginSerializer
+    def post(self,request):
+        serializer  = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
+
+            user = authenticate(username = username,password = password)
+            if not user or user == None:return Response({'error' : "Invalid Credential"})
+            Refresh=RefreshToken.for_user(user)
+            login(request,user)
+            return Response({ "access" :str( Refresh.access_token), 'refresh':str( Refresh),'user_id' : user.id,"status":1 ,'username':username,},status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors)
 
 class LogoutView(APIView):
-    permission_classes = (IsAuthenticated,)
-
+    serializer_class = logoutSerializer
     def post(self, request):
-        try:
-            refresh_token = request.data["refresh_token"]
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-
-            return Response(status=status.HTTP_205_RESET_CONTENT)
-        except Exception as e:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+        serializer  = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            refresh_token  = serializer.validated_data['refresh_token']
+            try:
+                logout(request)
+                RefreshToken(refresh_token).blacklist()
+                return Response("successfully logged out",status=status.HTTP_200_OK)
+            except Exception as e:
+                    return Response("something went wrong",status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -53,15 +93,15 @@ def updateProfile(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def Artworks(request):
-    public_works = Artwork.objects.filter(is_public=True).order_by('-updated')[:10]
-    user_works = request.user.artworks.all().order_by('-updated')[:10]
+    public_works = Artwork.objects.filter(is_public=True)
+    user_works = request.user.artworks.all()
     artworks = public_works | user_works
     serializer = ArtworkSerializer(artworks, many=True)
     return Response(serializer.data)
 
 @api_view(['GET'])
 def ArtworkList(request):
-    artworks = Artwork.objects.all().order_by('-updated')
+    artworks = Artwork.objects.all()
     serializer = ArtworkSerializer(artworks, many=True)
     return Response(serializer.data)
 

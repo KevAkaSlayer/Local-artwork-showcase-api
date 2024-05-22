@@ -10,11 +10,11 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-
+        profile_pic_url = user.profile_pic.url if user.profile_pic else None
         token['username'] = user.username
         token['email'] = user.email
         token['bio'] = user.bio
-        token['profile_pic'] = user.profile_pic.url
+        token['profile_pic'] = profile_pic_url
 
         return token
 
@@ -51,6 +51,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+    
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField(required = True)
+    password = serializers.CharField(required = True)
+
 class ArtworkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artwork
@@ -62,3 +67,6 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artist
         fields = '__all__'
+
+class logoutSerializer(serializers.Serializer):
+    refresh_token = serializers.CharField(required=True, allow_blank=False)
