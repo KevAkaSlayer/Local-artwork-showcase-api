@@ -62,7 +62,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:5500",  # Allow requests from your development origin
+    "http://127.0.0.1:5500",
+    "https://art-gallery-fe.vercel.app/"  # Allow requests from your development origin
 ]
 
 
