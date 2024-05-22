@@ -11,16 +11,11 @@ from rest_framework import status
 from django.contrib.auth import authenticate, login, logout
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import SessionAuthentication
-
+from django.http import JsonResponse
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
-
-# class RegisterView(generics.CreateAPIView):
-#     queryset = Artist.objects.all()
-#     permission_classes = [AllowAny]
-#     serializer_class = RegisterSerializer
 
 class RegisterView(APIView):
     serializer_class = RegisterSerializer
@@ -73,12 +68,14 @@ class LogoutView(APIView):
                     return Response("something went wrong",status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors)
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def Profile(request):
-    user = request.user
-    serializer = ProfileSerializer(user, many=False)
-    return Response(serializer.data)
+class Profile(APIView): 
+    authentication_classes=[JWTAuthentication,SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+    def get(self,request):
+        user=request.user
+        profile_picture_url = request.build_absolute_uri(user.profile_pic.url) if user.profile_pic else None
+        return JsonResponse({"email":user.email,'user_id' : user.id,"status":1 ,'username':user.username,'bio':user.bio,'profile_pic':profile_picture_url,},status=status.HTTP_200_OK) 
+    
 
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
