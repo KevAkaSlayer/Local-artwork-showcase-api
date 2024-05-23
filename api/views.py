@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Artist, Artwork
-from .serializers import MyTokenObtainPairSerializer, RegisterSerializer, ProfileSerializer, ArtworkSerializer, LoginSerializer, logoutSerializer
+from .serializers import MyTokenObtainPairSerializer, RegisterSerializer, ProfileSerializer, ArtworkSerializer, LoginSerializer, logoutSerializer,ProfileUpdateSerializer
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
@@ -12,6 +12,7 @@ from django.contrib.auth import authenticate, login, logout
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.authentication import SessionAuthentication
 from django.http import JsonResponse
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -80,16 +81,57 @@ class Profile(APIView):
         user=request.user
         profile_picture_url = request.build_absolute_uri(user.profile_pic.url) if user.profile_pic else None
         return JsonResponse({"email":user.email,'user_id' : user.id,"status":1 ,'username':user.username,'bio':user.bio,'profile_pic':profile_picture_url,},status=status.HTTP_200_OK) 
-    
 
-@api_view(['PUT'])
-@permission_classes([IsAuthenticated])
-def updateProfile(request):
-    user = request.user
-    serializer = ProfileSerializer(user, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-    return Response(serializer.data)
+class ArtworkList(APIView):
+     def get(self, request):
+          id = request.GET.get('id')
+          if id:
+              id=int(id)
+              artwork = Artwork.objects.filter(id=id).exists()
+              if artwork:
+                   artwork = Artwork.objects.filter(id=id).values()
+                   return Response({'artwork': artwork})
+              else :return Response({'error': "Artwork not found"})
+
+          artworks = Artwork.objects.filter().values()
+          return Response({'artworks': artworks})
+     
+class updateProfile(APIView): 
+    authentication_classes=[JWTAuthentication,SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProfileUpdateSerializer
+    parser_classes = (MultiPartParser, FormParser)
+    def post(self,request):
+        serializer  = self.serializer_class(data=request.data)
+        if  serializer.is_valid():
+             user=request.user
+             email = serializer.validated_data['email']
+             name = serializer.validated_data['name']
+             bio = serializer.validated_data['bio']
+             try:
+                if(name):user.name=name
+                user.save()
+             except Exception as e:pass
+             try:
+                if bio:user.bio=bio
+                user.save()
+             except Exception as e:pass
+             try:
+                if email:
+                    if email==user.email:pass
+                    else:
+                        if not Artist.objects.filter(email=email).exists():
+                                user.email=email
+                                user.save()
+             except Exception as e:pass
+             return Response({"status":1},status=status.HTTP_200_OK)
+        else:return Response(serializer.errors)
+             
+
+
+
+
+
 
 
 @api_view(['GET'])
@@ -101,11 +143,6 @@ def Artworks(request):
     serializer = ArtworkSerializer(artworks, many=True)
     return Response(serializer.data)
 
-@api_view(['GET'])
-def ArtworkList(request):
-    artworks = Artwork.objects.all()
-    serializer = ArtworkSerializer(artworks, many=True)
-    return Response(serializer.data)
 
 
 @api_view(['GET'])
@@ -114,29 +151,62 @@ def ArtworkDetail(request, pk):
     serializer = ArtworkSerializer(artworks, many=False)
     return Response(serializer.data)
 
-@api_view(['POST'])
-def createArtwork(request):
-    data = request.data
-    Artwork = Artwork.objects.create(
-        body=data['body']
-    )
-    serializer = ArtworkSerializer(Artwork, many=False)
-    return Response(serializer.data)
+class createArtwork(APIView):
+    authentication_classes=[JWTAuthentication,SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = ArtworkSerializer
+    parser_classes = (MultiPartParser, FormParser)
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            try:
+                serializer.save()
+                return Response({"status":1})
+            except Exception as e:
+                 return Response("Error ",status=status.HTTP_406_NOT_ACCEPTABLE)
+        return Response(serializer.errors)
 
-@api_view(['PUT'])
-def updateArtwork(request, pk):
-    data = request.data
-    Artwork = Artwork.objects.get(id=pk)
-    serializer = ArtworkSerializer(instance=Artwork, data=data)
 
-    if serializer.is_valid():
-        serializer.save()
+class updateArtwork(APIView):
+    authentication_classes=[JWTAuthentication,SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = ArtworkSerializer
+    parser_classes = (MultiPartParser, FormParser)
+    def post(self, request):
+          try:
+             id = request.GET.get('id')
+             if id:
+                 id=int(id)
+                 if Artworks.objects.filter(id=id).exists():
+                         artwork = Artworks.objects.get(id=id)
+                         if artwork.user == request.user:
+                              serializer = self.serializer_class(data=request.data)
+                              if serializer.is_valid():
+                                   title  = serializer.validated_data['title']       
+                                   description  = serializer.validated_data['description']         
+                                   artwork.title=title
+                                   artwork.description=description
+                                   artwork.save()
+                                   return Response({"status":1})
+                              return Response(serializer.errors)
+                    
+          except Exception as e:return Response("Error",status=status.HTTP_406_NOT_ACCEPTABLE)
+          return Response("Error",status=status.HTTP_406_NOT_ACCEPTABLE)
 
-    return Response(serializer.data)
 
-@api_view(['DELETE'])
-def deleteArtwork(request, pk):
-    Artwork = Artwork.objects.get(id=pk)
-    Artwork.delete()
-    return Response('Artwork was deleted!')
 
+
+class deleteArtwork(APIView):
+    authentication_classes=[JWTAuthentication,SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+          id = request.GET.get('id')
+          if id:
+            id=int(id)
+            if Artworks.objects.filter(id=id).exists():
+                artwork = Artworks.objects.get(id=id)
+                if artwork.user == request.user:
+                    artwork.delete()
+                    return Response(status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
+                        

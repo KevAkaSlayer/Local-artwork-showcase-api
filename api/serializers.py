@@ -60,6 +60,12 @@ class ArtworkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artwork
         fields = '__all__'
+# class UpdateArtworkSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Artwork
+#         fields = ['title', 'description']
+
+
 
 class ProfileSerializer(serializers.ModelSerializer):
     artworks = ArtworkSerializer(many=True, read_only=True)
@@ -68,5 +74,13 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = Artist
         fields = '__all__'
 
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(required=False,max_length=100)
+    email = serializers.EmailField(required=False)
+    bio = serializers.CharField(required=False,max_length=500)
+
+
+
+
 class logoutSerializer(serializers.Serializer):
-    refresh_token = serializers.CharField(required=True, allow_blank=False)
+    refresh_token = serializers.CharField(required=True, allow_blank=False) 
