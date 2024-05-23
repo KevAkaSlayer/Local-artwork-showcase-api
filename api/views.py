@@ -17,6 +17,9 @@ from django.http import JsonResponse
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
+
+
+
 class RegisterView(APIView):
     serializer_class = RegisterSerializer
     
@@ -29,7 +32,9 @@ class RegisterView(APIView):
                  if user :return Response("User with this email already exist",status=status.HTTP_406_NOT_ACCEPTABLE)
                  user = serializer.save()
                  user.save()
-                 return Response({"status":1})
+                 return Response({"status":1},status=status.HTTP_201_CREATED)
+                 print(serializer.validated_data)
+                 print(status.HTTP_201_CREATED)
             except Exception as e:
                 return Response("User with this email already exist",status=status.HTTP_406_NOT_ACCEPTABLE)
                  
